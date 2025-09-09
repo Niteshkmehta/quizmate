@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>QuizMate by Mr. Nitesh Kumar</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f4f7fb; --fg:#222; --card:#fff; --muted:#666; --brand:#007bff; --brand2:#00c6ff;
+      --ok:#4caf50; --bad:#f44336; --soft:#fafafa; --border:#ddd; --link:#0b74de;
+    }
+    body.dark{
+      --bg:#1e1e1e; --fg:#ddd; --card:#2a2a2a; --muted:#aaa; --brand:#4c8dff; --brand2:#74d1ff;
+      --ok:#2ecc71; --bad:#ff6b6b; --soft:#333; --border:#555; --link:#7ab8ff;
+    }
+    body{
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: var(--bg); color: var(--fg);
+      margin:0; padding:20px; transition: background .3s, color .3s;
+    }
+    .shell{ max-width: 920px; margin: 0 auto; position: relative; }
+    .topbar{
+      display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap;
+    }
+    .timer{
+      font-weight:700; font-size:18px; color:var(--fg);
+      padding:8px 12px; background:var(--card); border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,.06);
+    }
+    .dark-toggle{
+      cursor:pointer; border:none; border-radius:8px; padding:8px 14px; background:var(--brand); color:#fff;
+    }
+    .quiz{
+      background: var(--card); border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08);
+      padding: 22px;
+    }
+    h2{ margin: 0 0 14px; font-size:22px; }
+    .file-upload{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+    .file-upload input{
+      padding:10px; border:2px dashed var(--brand); border-radius:10px; background: #eaf2ff22; color: var(--fg);
+      cursor:pointer;
+    }
+    .progress{
+      width:100%; height:14px; background:#e9edf3; border-radius:999px; overflow:hidden; margin:14px 0 6px;
+    }
+    .bar{
+      height:100%; width:0%;
+      background: linear-gradient(90deg, var(--brand), var(--brand2));
+      transition: width .3s;
+    }
+    .subtle{ color: var(--muted); font-size: 12px; margin-bottom:8px; }
+    .question{ font-size: 20px; font-weight:700; margin: 10px 0 12px; }
+    .options .option{
+      display:block; padding:14px; margin:8px 0; border:1px solid var(--border); border-radius:10px;
+      background:var(--soft); cursor:pointer; transition:.2s; font-size:16px;
+    }
+    .option:hover{ transform: translateY(-1px); }
+    .option.correct{ background: #c8f7c5; border-color: var(--ok); }
+    .option.wrong{ background: #f7c5c5; border-color: var(--bad); }
+    .feedback{ margin-top:10px; font-weight:700; }
+    .expl{
+  margin-top:10px;
+  font-size:24px;   /* same as option & correct answer */
+  color:var(--fg);  /* match normal text color for better visibility */
+  font-weight:500;  /* optional: makes it stand out slightly */
+}
+    .controls{
+      display:flex; gap:10px; justify-content:space-between; margin-top:16px; flex-wrap:wrap;
+    }
+    .controls .left, .controls .right{ display:flex; gap:10px; flex-wrap:wrap; }
+    button{
+      border:none; border-radius:8px; padding:12px 18px; font-size:15px; cursor:pointer; background: var(--brand); color:#fff;
+      transition:.2s;
+    }
+    button.ghost{ background: transparent; color: var(--brand); border:1px solid var(--brand); }
+    button.success{ background:#28a745; }
+    button:hover{ filter: brightness(.95); }
+    #quizArea{ display:none; }
+
+    hr.separator{ border:0; border-top:2px dashed #bbb; margin:20px 0; }
+
+    /* Review page */
+    .summary{ text-align:center; font-size:22px; font-weight:800; margin: 12px 0 16px; }
+    .pillbox{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:12px; }
+    .pill{
+      border:1px solid var(--border); border-radius:999px; padding:6px 12px; background:var(--soft);
+      font-size:13px;
+    }
+    .review-section{ border-top:1px solid var(--border); padding-top:16px; margin-top:18px; }
+    .review-title{ margin:6px 0 12px; }
+    .qcard{
+      border:1px solid var(--border); border-radius:10px; padding:12px; margin:10px 0; background:var(--card);
+    }
+    .qnum{ font-weight:700; margin-bottom:6px; }
+    .jump a{ color: var(--link); text-decoration: none; margin:0 6px; }
+    .jump a:hover{ text-decoration: underline; }
+
+    /* 📱 Mobile adjustments */
+    @media (max-width: 600px) {
+      body { padding:12px; }
+      h2 { font-size:18px; }
+      .question { font-size:18px; }
+      .options .option { font-size:15px; padding:12px; }
+      button { flex:1; min-width:120px; }
+      .topbar { flex-direction:column; align-items:flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="topbar">
+      <div class="timer">⏱ Time Left: <span id="timeLeft">00:00</span></div>
+      <button class="dark-toggle" onclick="toggleDark()">🌙 Dark Mode</button>
+    </div>
+
+    <div class="quiz">
+      <h2>📘 QuizMate by Mr. Nitesh Kumar</h2>
+
+      <div class="file-upload">
+        <input type="file" id="fileInput" accept=".csv, .xls, .xlsx" />
+        <button id="startBtn" onclick="startQuiz()" disabled>Start Quiz</button>
+      </div>
+
+      <hr class="separator">
+
+      <div id="quizArea">
+        <div class="progress"><div id="bar" class="bar"></div></div>
+        <div class="subtle"><span id="doneCount">0</span>/<span id="totalCount">0</span> answered</div>
+
+        <div class="question" id="question"></div>
+        <div class="options" id="options"></div>
+        <div class="feedback" id="feedback"></div>
+        <div class="expl" id="explain"></div>
+
+        <div class="controls">
+          <div class="left">
+            <button id="prevBtn" class="ghost" onclick="prevQ()">⬅ Previous</button>
+          </div>
+          <div class="right">
+            <button id="nextBtn" onclick="nextQ()">Next ➡</button>
+            <button class="success" onclick="submitQuiz()">✅ Submit</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="reviewArea"></div>
+    </div>
+  </div>
+
+  <!-- ✅ SheetJS for Excel parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <script>
+    let questions=[], answers=[], current=0, totalSeconds=0, countdown=null, fileLoaded=false;
+    const NEGATIVE_MARK = 0.25; // 🔥 wrong answer penalty
+
+    document.getElementById('fileInput').addEventListener('change',(e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+
+      if(file.name.endsWith(".csv")){
+        reader.onload = (ev)=>{
+          questions = parseCSV(ev.target.result);
+          afterFileLoad();
+        };
+        reader.readAsText(file);
+      } else {
+        reader.onload = (ev)=>{
+          const data = new Uint8Array(ev.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          questions = parseExcel(json);
+          afterFileLoad();
+        };
+        reader.readAsArrayBuffer(file);
+      }
+    });
+
+    function afterFileLoad(){
+      if(questions.length===0){ alert("No valid rows."); return; }
+      fileLoaded=true;
+      shuffle(questions);
+      document.getElementById('totalCount').textContent=questions.length;
+      document.getElementById('startBtn').disabled=false;
+    }
+
+    function parseCSV(text){
+      const lines=text.replace(/\r/g,'').trim().split('\n'), out=[];
+      let start=0, first=splitCSVLine(lines[0]);
+      if(first[0].toLowerCase().includes('question')) start=1;
+      for(let i=start;i<lines.length;i++){
+        if(!lines[i].trim()) continue;
+        const cols=splitCSVLine(lines[i]);
+        if(cols.length<6) continue;
+        const explanation=cols[6]||'';
+        out.push({question:cols[0], options:[cols[1],cols[2],cols[3],cols[4]], correct: Math.max(1,Math.min(4,parseInt(cols[5],10)))-1, explanation});
+      }
+      return out;
+    }
+
+    function parseExcel(rows){
+      const out=[];
+      let start=0;
+      if(rows[0][0] && rows[0][0].toString().toLowerCase().includes('question')) start=1;
+      for(let i=start;i<rows.length;i++){
+        if(!rows[i] || rows[i].length<6) continue;
+        const explanation=rows[i][6]||'';
+        out.push({
+          question: rows[i][0],
+          options: [rows[i][1], rows[i][2], rows[i][3], rows[i][4]],
+          correct: Math.max(1,Math.min(4,parseInt(rows[i][5],10)))-1,
+          explanation
+        });
+      }
+      return out;
+    }
+
+    function splitCSVLine(line){
+      const result=[], l=line.length; let cur='', inQuotes=false;
+      for(let i=0;i<l;i++){
+        const ch=line[i];
+        if(ch=='"'){ if(inQuotes && line[i+1]=='"'){ cur+='"'; i++; } else inQuotes=!inQuotes; }
+        else if(ch==',' && !inQuotes){ result.push(cur.trim()); cur=''; }
+        else cur+=ch;
+      }
+      result.push(cur.trim());
+      return result;
+    }
+
+    function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];} return arr;}
+    function fmtTime(sec){ const m=Math.floor(sec/60).toString().padStart(2,'0'); const s=Math.floor(sec%60).toString().padStart(2,'0'); return `${m}:${s}`;}
+
+    function startQuiz(){
+      if(!fileLoaded) return alert("Select file first!");
+      answers=Array.from({length:questions.length},()=>null);
+      current=0;
+      totalSeconds=questions.length*30;
+      document.getElementById('reviewArea').innerHTML='';
+      document.getElementById('quizArea').style.display='block';
+      startTimer();
+      showQ();
+      updateProgress();
+    }
+
+    function startTimer(){
+      clearInterval(countdown);
+      document.getElementById('timeLeft').textContent=fmtTime(totalSeconds);
+      countdown=setInterval(()=>{
+        totalSeconds--;
+        if(totalSeconds<0){ clearInterval(countdown); submitQuiz(); return; }
+        document.getElementById('timeLeft').textContent=fmtTime(totalSeconds);
+      },1000);
+    }
+
+    function showQ(){
+      const q=questions[current];
+      document.getElementById('question').textContent=`Q${current+1}. ${q.question}`;
+      const opts=document.getElementById('options'); opts.innerHTML=''; document.getElementById('feedback').innerHTML=''; document.getElementById('explain').innerHTML='';
+      q.options.forEach((opt,i)=>{
+        const el=document.createElement('div'); el.className='option'; el.textContent=opt; el.onclick=()=>selectAnswer(i,el); opts.appendChild(el);
+        const a=answers[current];
+        if(a!==null){ el.onclick=null; if(i===q.correct) el.classList.add('correct'); if(a.selected===i && i!==q.correct) el.classList.add('wrong'); }
+      });
+      if(answers[current]!==null){ document.getElementById('feedback').innerHTML=`✔ Correct Answer: <b style="color:var(--ok)">${q.options[q.correct]}</b>`; if(q.explanation) document.getElementById('explain').textContent=`Explanation: ${q.explanation}`; }
+      document.getElementById('prevBtn').style.display=current===0?'none':'inline-block';
+      document.getElementById('nextBtn').textContent=current===questions.length-1?'Finish':'Next ➡';
+      updateProgress();
+    }
+
+    function selectAnswer(idx){
+      const q=questions[current]; const prev=answers[current];
+      answers[current]={selected:idx, correct:q.correct};
+      document.querySelectorAll('#options .option').forEach((el,i)=>{ el.onclick=null; if(i===q.correct) el.classList.add('correct'); if(i===idx && i!==q.correct) el.classList.add('wrong'); });
+      document.getElementById('feedback').innerHTML=`✔ Correct Answer: <b style="color:var(--ok)">${q.options[q.correct]}</b>`;
+      if(q.explanation) document.getElementById('explain').textContent=`Explanation: ${q.explanation}`;
+      if(prev===null) updateProgress();
+    }
+
+    function prevQ(){ if(current>0){current--; showQ();} }
+    function nextQ(){ if(answers[current]===null){ answers[current]={selected:null, correct:questions[current].correct}; updateProgress(); } if(current<questions.length-1){current++; showQ();} else submitQuiz(); }
+
+    function updateProgress(){ const answered=answers.filter(a=>a!==null).length; const total=answers.length; const pct=(answered/total)*100; document.getElementById('bar').style.width=pct+'%'; document.getElementById('doneCount').textContent=answered; }
+
+    function submitQuiz(){
+      clearInterval(countdown);
+      answers=answers.map((a,idx)=>a!==null?a:{selected:null, correct:questions[idx].correct});
+      const correct=[], wrong=[], skipped=[];
+      answers.forEach((a,idx)=>{ if(a.selected===null) skipped.push(idx); else if(a.selected===a.correct) correct.push(idx); else wrong.push(idx); });
+      
+      // 🔥 Apply negative marking
+      const scoreRaw = correct.length;
+      const penalty = wrong.length * NEGATIVE_MARK;
+      const finalScore = Math.max(0, scoreRaw - penalty); // no negative total
+      
+      const total=questions.length;
+      const mkJumpList=(arr)=>arr.length?arr.map(i=>`<a href="#q-${i+1}">Q${i+1}</a>`).join(' '):'<span class="subtle">None</span>';
+      const mkSection=(title,arr,emoji)=>{
+        let html=`<div class="review-section"><h3 class="review-title" id="${title.toLowerCase()}">${emoji} ${title} (${arr.length})</h3>`;
+        html+=`<div class="jump">${mkJumpList(arr)}</div>`;
+        arr.forEach(idx=>{
+          const q=questions[idx], a=answers[idx], your=(a.selected===null)?'No answer':q.options[a.selected];
+          html+=`<div class="qcard" id="q-${idx+1}">
+            <div class="qnum">Q${idx+1}. ${q.question}</div>
+            <div><b>Your answer:</b> <span style="color:${(a.selected!==null && a.selected===q.correct)?'var(--ok)':'var(--bad)'}">${your}</span></div>
+            <div><b>Correct answer:</b> <span style="color:var(--ok)">${q.options[q.correct]}</span></div>
+            ${q.explanation?`<div class="expl">Explanation: ${q.explanation}</div>`:''}
+          </div>`;
+        });
+        html+='</div>'; return html;
+      };
+
+      const review=`<div class="summary">🎉 Quiz Finished! <br>
+        ✅ Correct: <b>${correct.length}</b>, ❌ Wrong: <b>${wrong.length}</b>, ⏭ Skipped: <b>${skipped.length}</b><br>
+        📊 Final Score (with –${NEGATIVE_MARK} for wrong): <b>${finalScore.toFixed(2)} / ${total}</b></div>
+        <div class="pillbox"><div class="pill">Total: ${total}</div><div class="pill">Correct: ${correct.length}</div><div class="pill">Wrong: ${wrong.length}</div><div class="pill">Skipped: ${skipped.length}</div></div>
+        <button onclick="location.reload()">🔄 Restart</button>
+        ${mkSection('Correct',correct,'✅')}
+        ${mkSection('Wrong',wrong,'❌')}
+        ${mkSection('Skipped',skipped,'⏭')}`;
+      document.getElementById('quizArea').style.display='none';
+      document.getElementById('reviewArea').innerHTML=review;
+    }
+
+    function toggleDark(){ document.body.classList.toggle('dark'); }
+  </script>
+</body>
+</html>
